@@ -268,7 +268,6 @@ with open("heart_model.pkl", "rb") as file:
 with open("scaler.pkl", "rb") as file:
     scaler = pickle.load(file)
 
-```python
 st.title("Heart Disease Prediction")
 st.write("Enter the patient's information below.")
 
