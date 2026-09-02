@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import joblib
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -30,15 +29,11 @@ FEATURE_COLUMNS = [
 
 
 @st.cache_resource
-def train_model():
+def train_model(version=2):
 
     df = pd.read_csv("heart.csv")
 
     df = df.drop_duplicates()
-
-    df = df.dropna(
-        subset=FEATURE_COLUMNS + ["target"]
-    )
 
     X = df[FEATURE_COLUMNS].copy()
 
@@ -53,18 +48,21 @@ def train_model():
     )
 
     model = Pipeline([
-        ("scaler", StandardScaler()),
-        ("logistic", LogisticRegression(max_iter=5000))
+        (
+            "scaler",
+            StandardScaler()
+        ),
+        (
+            "logistic",
+            LogisticRegression(
+                max_iter=5000
+            )
+        )
     ])
 
     model.fit(
         X_train,
         y_train
-    )
-
-    joblib.dump(
-        model,
-        "heart_model.pkl"
     )
 
     return model
@@ -77,7 +75,7 @@ try:
 except FileNotFoundError:
 
     st.error(
-        "heart.csv was not found. Please put heart.csv in the same folder as app.py."
+        "heart.csv was not found. Make sure it is in the same folder as app.py."
     )
 
     st.stop()
