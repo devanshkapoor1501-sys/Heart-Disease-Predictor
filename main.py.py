@@ -2,17 +2,19 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, GridSearchCV
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
 
 st.set_page_config(
     page_title="Heart Disease Predictor",
     page_icon="❤️",
     layout="centered"
 )
+
 
 FEATURE_COLUMNS = [
     "age",
@@ -35,14 +37,11 @@ def train_model():
 
     df = df.drop_duplicates()
 
-    df["age"] = pd.to_numeric(df["age"], errors="coerce")
-
     df = df.dropna(
         subset=FEATURE_COLUMNS + ["target"]
     )
 
     X = df[FEATURE_COLUMNS].copy()
-
     y = df["target"].astype(int)
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -58,157 +57,71 @@ def train_model():
         ("model", LogisticRegression(max_iter=5000))
     ])
 
-    cv = StratifiedKFold(
-        n_splits=5,
-        shuffle=True,
-        random_state=42
+    pipeline.fit(
+        X_train,
+        y_train
     )
 
-    param_grid = {
-        "model__C": [
-            0.001,
-            0.01,
-            0.1,
-            1,
-            10,
-            100
-        ]
-    }
-
-    grid = GridSearchCV(
-        pipeline,
-        param_grid,
-        cv=cv,
-        scoring="accuracy"
+    y_pred = pipeline.predict(
+        X_test
     )
-
-    grid.fit(X_train, y_train)
-
-    best_model = grid.best_estimator_
-
-    y_pred = best_model.predict(X_test)
 
     accuracy = accuracy_score(
         y_test,
         y_pred
     )
 
+    cv = StratifiedKFold(
+        n_splits=5,
+        shuffle=True,
+        random_state=42
+    )
+
     cv_scores = cross_val_score(
-        best_model,
+        pipeline,
         X,
         y,
         cv=cv,
         scoring="accuracy"
     )
 
-    cv_accuracy = cv_scores.mean()
-
     joblib.dump(
-        best_model,
+        pipeline,
         "heart_model.pkl"
     )
 
     return (
-        best_model,
+        pipeline,
         accuracy,
-        cv_accuracy,
-        grid.best_params_,
-        df
+        cv_scores.mean(),
+        y_test,
+        y_pred
     )
-
-
-@st.cache_resource
-def load_saved_model():
-
-    try:
-        return joblib.load(
-            "heart_model.pkl"
-        )
-
-    except:
-        return None
-
-
-st.title("❤️ Heart Disease Predictor")
-
-st.write(
-    "Enter the patient's information below."
-)
 
 
 try:
 
-    saved_model = load_saved_model()
+    if "model" not in st.session_state:
 
-    if saved_model is None:
+        with st.spinner("Training heart disease model..."):
 
-        (
-            model,
-            accuracy,
-            cv_accuracy,
-            best_params,
-            df
-        ) = train_model()
+            (
+                model,
+                accuracy,
+                cv_accuracy,
+                y_test,
+                y_pred
+            ) = train_model()
+
+            st.session_state.model = model
+            st.session_state.accuracy = accuracy
+            st.session_state.cv_accuracy = cv_accuracy
 
     else:
 
-        model = saved_model
-
-        df = pd.read_csv(
-            "heart.csv"
-        )
-
-        df = df.drop_duplicates()
-
-        df["age"] = pd.to_numeric(
-            df["age"],
-            errors="coerce"
-        )
-
-        df = df.dropna(
-            subset=FEATURE_COLUMNS + ["target"]
-        )
-
-        X = df[FEATURE_COLUMNS].copy()
-
-        y = df["target"].astype(int)
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            test_size=0.20,
-            random_state=42,
-            stratify=y
-        )
-
-        y_test_pred = model.predict(
-            X_test
-        )
-
-        accuracy = accuracy_score(
-            y_test,
-            y_test_pred
-        )
-
-        cv = StratifiedKFold(
-            n_splits=5,
-            shuffle=True,
-            random_state=42
-        )
-
-        cv_scores = cross_val_score(
-            model,
-            X,
-            y,
-            cv=cv,
-            scoring="accuracy"
-        )
-
-        cv_accuracy = cv_scores.mean()
-
-        best_params = {
-            "C": model.named_steps["model"].C
-        }
+        model = st.session_state.model
+        accuracy = st.session_state.accuracy
+        cv_accuracy = st.session_state.cv_accuracy
 
 
 except FileNotFoundError:
@@ -223,15 +136,20 @@ except FileNotFoundError:
 except Exception as e:
 
     st.error(
-        f"Error loading the model or dataset: {e}"
+        f"Error loading dataset or training model: {e}"
     )
 
     st.stop()
 
 
-st.sidebar.header(
-    "Model Information"
+st.title("❤️ Heart Disease Predictor")
+
+st.write(
+    "Enter the patient's information below to predict the possibility of heart disease."
 )
+
+
+st.sidebar.header("Model Performance")
 
 st.sidebar.write(
     f"Test Accuracy: {accuracy * 100:.2f}%"
@@ -241,18 +159,12 @@ st.sidebar.write(
     f"Cross-Validation Accuracy: {cv_accuracy * 100:.2f}%"
 )
 
-st.sidebar.write(
-    f"Best C: {best_params['C']}"
-)
 
-
-st.subheader(
-    "Patient Information"
-)
+st.subheader("Patient Information")
 
 
 age = st.number_input(
-    "Age",
+    "What is the patient's age?",
     min_value=1,
     max_value=120,
     value=50,
@@ -260,22 +172,42 @@ age = st.number_input(
 )
 
 
-sex = st.selectbox(
-    "Sex",
-    [0, 1],
-    format_func=lambda x:
-    "Female" if x == 0 else "Male"
+sex_option = st.selectbox(
+    "What is the patient's sex?",
+    [
+        "Female",
+        "Male"
+    ]
 )
 
+if sex_option == "Female":
+    sex = 0
+else:
+    sex = 1
 
-cp = st.selectbox(
-    "Chest Pain Type",
-    [0, 1, 2, 3]
+
+cp_option = st.selectbox(
+    "What type of chest pain does the patient have?",
+    [
+        "Typical Angina",
+        "Atypical Angina",
+        "Non-anginal Pain",
+        "Asymptomatic"
+    ]
 )
+
+cp_values = {
+    "Typical Angina": 0,
+    "Atypical Angina": 1,
+    "Non-anginal Pain": 2,
+    "Asymptomatic": 3
+}
+
+cp = cp_values[cp_option]
 
 
 trestbps = st.number_input(
-    "Resting Blood Pressure",
+    "What is the resting blood pressure (mm Hg)?",
     min_value=50,
     max_value=250,
     value=120,
@@ -284,7 +216,7 @@ trestbps = st.number_input(
 
 
 thalach = st.number_input(
-    "Maximum Heart Rate",
+    "What is the maximum heart rate achieved?",
     min_value=50,
     max_value=250,
     value=150,
@@ -292,16 +224,22 @@ thalach = st.number_input(
 )
 
 
-exang = st.selectbox(
-    "Exercise Induced Angina",
-    [0, 1],
-    format_func=lambda x:
-    "No" if x == 0 else "Yes"
+exang_option = st.selectbox(
+    "Does exercise cause chest pain (angina)?",
+    [
+        "No",
+        "Yes"
+    ]
 )
+
+if exang_option == "No":
+    exang = 0
+else:
+    exang = 1
 
 
 oldpeak = st.number_input(
-    "ST Depression",
+    "What is the ST depression caused by exercise?",
     min_value=0.0,
     max_value=10.0,
     value=1.0,
@@ -309,22 +247,49 @@ oldpeak = st.number_input(
 )
 
 
-slope = st.selectbox(
-    "Slope",
-    [0, 1, 2]
+slope_option = st.selectbox(
+    "What is the slope of the peak exercise ST segment?",
+    [
+        "Upsloping",
+        "Flat",
+        "Downsloping"
+    ]
+)
+
+slope_values = {
+    "Upsloping": 0,
+    "Flat": 1,
+    "Downsloping": 2
+}
+
+slope = slope_values[slope_option]
+
+
+ca = st.number_input(
+    "Number of major vessels colored by fluoroscopy?",
+    min_value=0,
+    max_value=4,
+    value=0,
+    step=1
 )
 
 
-ca = st.selectbox(
-    "Number of Major Vessels",
-    [0, 1, 2, 3, 4]
+thal_option = st.selectbox(
+    "What is the thalassemia result?",
+    [
+        "Normal",
+        "Fixed Defect",
+        "Reversible Defect"
+    ]
 )
 
+thal_values = {
+    "Normal": 1,
+    "Fixed Defect": 2,
+    "Reversible Defect": 3
+}
 
-thal = st.selectbox(
-    "Thal",
-    [0, 1, 2, 3]
-)
+thal = thal_values[thal_option]
 
 
 input_data = pd.DataFrame(
@@ -344,9 +309,7 @@ input_data = pd.DataFrame(
 )
 
 
-st.subheader(
-    "Input Data"
-)
+st.subheader("Patient Data")
 
 st.dataframe(
     input_data,
@@ -355,7 +318,7 @@ st.dataframe(
 
 
 if st.button(
-    "Predict Heart Disease",
+    "🔍 Predict Heart Disease",
     use_container_width=True
 ):
 
@@ -369,14 +332,11 @@ if st.button(
             input_data
         )[0]
 
-        class_0_probability = probabilities[0]
+        probability_class_0 = probabilities[0]
+        probability_class_1 = probabilities[1]
 
-        class_1_probability = probabilities[1]
 
-
-        st.subheader(
-            "Prediction Result"
-        )
+        st.subheader("Prediction Result")
 
 
         if prediction == 1:
@@ -398,30 +358,31 @@ if st.button(
 
         st.write(
             f"Probability of class 0: "
-            f"{class_0_probability * 100:.2f}%"
+            f"{probability_class_0 * 100:.2f}%"
         )
 
         st.write(
             f"Probability of class 1: "
-            f"{class_1_probability * 100:.2f}%"
+            f"{probability_class_1 * 100:.2f}%"
         )
 
+
+        st.subheader("Probability")
 
         st.write(
             "Class 0"
         )
 
         st.progress(
-            float(class_0_probability)
+            float(probability_class_0)
         )
-
 
         st.write(
             "Class 1"
         )
 
         st.progress(
-            float(class_1_probability)
+            float(probability_class_1)
         )
 
 
