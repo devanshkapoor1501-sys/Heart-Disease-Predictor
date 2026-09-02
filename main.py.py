@@ -36,11 +36,6 @@ def train_model():
 
     df = df.drop_duplicates()
 
-    df["age"] = pd.to_numeric(
-        df["age"],
-        errors="coerce"
-    )
-
     df = df.dropna(
         subset=FEATURE_COLUMNS + ["target"]
     )
@@ -75,13 +70,31 @@ def train_model():
     return model
 
 
-model = train_model()
+try:
+
+    model = train_model()
+
+except FileNotFoundError:
+
+    st.error(
+        "heart.csv was not found."
+    )
+
+    st.stop()
+
+except Exception as e:
+
+    st.error(
+        f"Error training model: {e}"
+    )
+
+    st.stop()
 
 
-st.title("❤️Heart Disease Predictor")
+st.title("❤️ Heart Disease Predictor")
 
 st.write(
-    "Enter the patient's information to check the prediction."
+    "Enter the patient's information below."
 )
 
 
@@ -89,132 +102,86 @@ st.subheader("Patient Information")
 
 
 age = st.number_input(
-    "What is the patient's age?",
-    min_value=1,
-    max_value=120,
+    "Age",
+    min_value=20,
+    max_value=100,
     value=50,
     step=1
 )
 
 
-sex_option = st.selectbox(
-    "What is the patient's sex?",
-    [
-        "Female",
-        "Male"
-    ]
+sex = st.selectbox(
+    "Sex",
+    [0, 1],
+    format_func=lambda x:
+    "Female" if x == 0 else "Male"
 )
 
-if sex_option == "Female":
-    sex = 0
-else:
-    sex = 1
 
-
-cp_option = st.selectbox(
-    "What type of chest pain does the patient have?",
-    [
-        "Typical Angina",
-        "Atypical Angina",
-        "Non-anginal Pain",
-        "Asymptomatic"
-    ]
+cp = st.selectbox(
+    "Chest Pain Type",
+    [0, 1, 2, 3],
+    format_func=lambda x:
+    {
+        0: "Typical Angina",
+        1: "Atypical Angina",
+        2: "Non-anginal Pain",
+        3: "Asymptomatic"
+    }[x]
 )
-
-cp_values = {
-    "Typical Angina": 0,
-    "Atypical Angina": 1,
-    "Non-anginal Pain": 2,
-    "Asymptomatic": 3
-}
-
-cp = cp_values[cp_option]
 
 
 trestbps = st.number_input(
-    "What is the resting blood pressure?",
-    min_value=50,
-    max_value=250,
+    "Resting Blood Pressure",
+    min_value=80,
+    max_value=220,
     value=120,
     step=1
 )
 
 
 thalach = st.number_input(
-    "What is the maximum heart rate achieved?",
-    min_value=50,
-    max_value=250,
+    "Maximum Heart Rate",
+    min_value=70,
+    max_value=210,
     value=150,
     step=1
 )
 
 
-exang_option = st.selectbox(
-    "Does exercise cause chest pain?",
-    [
-        "No",
-        "Yes"
-    ]
+exang = st.selectbox(
+    "Exercise Induced Angina",
+    [0, 1],
+    format_func=lambda x:
+    "No" if x == 0 else "Yes"
 )
-
-if exang_option == "No":
-    exang = 0
-else:
-    exang = 1
 
 
 oldpeak = st.number_input(
-    "What is the ST depression caused by exercise?",
+    "ST Depression",
     min_value=0.0,
-    max_value=10.0,
+    max_value=6.5,
     value=1.0,
     step=0.1
 )
 
 
-slope_option = st.selectbox(
-    "What is the slope of the peak exercise ST segment?",
-    [
-        "Upsloping",
-        "Flat",
-        "Downsloping"
-    ]
-)
-
-slope_values = {
-    "Upsloping": 0,
-    "Flat": 1,
-    "Downsloping": 2
-}
-
-slope = slope_values[slope_option]
-
-
-ca = st.number_input(
-    "Number of major vessels?",
-    min_value=0,
-    max_value=4,
-    value=0,
-    step=1
+slope = st.selectbox(
+    "Slope",
+    [0, 1, 2]
 )
 
 
-thal_option = st.selectbox(
-    "What is the thalassemia result?",
-    [
-        "Normal",
-        "Fixed Defect",
-        "Reversible Defect"
-    ]
+ca = st.selectbox(
+    "Number of Major Vessels",
+    [0, 1, 2, 3, 4]
 )
 
-thal_values = {
-    "Normal": 1,
-    "Fixed Defect": 2,
-    "Reversible Defect": 3
-}
 
-thal = thal_values[thal_option]
+thal = st.selectbox(
+    "Thal",
+    [0, 1, 2, 3]
+)
 
 
 input_data = pd.DataFrame(
@@ -235,22 +202,30 @@ input_data = pd.DataFrame(
 
 
 if st.button(
-    "Predict Heart Disease",
+    "🔍 Predict Heart Disease",
     use_container_width=True
 ):
 
-    prediction = model.predict(
-        input_data
-    )[0]
+    try:
 
-    if prediction == 1:
+        prediction = model.predict(
+            input_data
+        )[0]
+
+        if prediction == 1:
+
+            st.error(
+                "Heart disease detected."
+            )
+
+        else:
+
+            st.success(
+                "No heart disease detected."
+            )
+
+    except Exception as e:
 
         st.error(
-            "Heart disease detected."
-        )
-
-    else:
-
-        st.success(
-            "No heart disease detected."
+            f"Prediction error: {e}"
         )
