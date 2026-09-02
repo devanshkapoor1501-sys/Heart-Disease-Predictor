@@ -24,11 +24,9 @@ df["age"] = pd.to_numeric(df["age"])
 x=df.drop("target",axis=1)
 y=df["target"]
 x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
-
 scaler=StandardScaler()
 x_train_scaled=scaler.fit_transform(x_train)
 x_test_scaled=scaler.transform(x_test)
-# Increased max_iter to fix ConvergenceWarning
 model=LogisticRegression(C=0.1,max_iter=5000)
 model.fit(x_train_scaled,y_train)
 y_pred=model.predict(x_test_scaled)
@@ -38,7 +36,6 @@ cv=StratifiedKFold(
     shuffle=True,
     random_state=42
 )
-# Use scaled data for cross-validation to avoid warnings
 scores=cross_val_score(
     model,
     x_train_scaled,
@@ -60,7 +57,6 @@ cv=StratifiedKFold(
     shuffle=True,
     random_state=42
 )
-# Updated to use x_train_scaled
 scores=cross_val_score(
     model,
     x_train_scaled,
@@ -95,7 +91,6 @@ grid=GridSearchCV(
     cv=cv,
     scoring='accuracy'
 )
-# Updated to use x_train_scaled to prevent ConvergenceWarning
 grid.fit(x_train_scaled,y_train)
 print(grid.best_params_)
 print(grid.best_score_)
@@ -111,7 +106,6 @@ params = {
     "gamma": ["scale", "auto", 0.01, 0.1, 1],
     "kernel": ["linear", "rbf"]
 }
-# Using scaled data for faster convergence
 scores=cross_val_score(
     model1,
     x_train_scaled,
@@ -136,7 +130,6 @@ cv=StratifiedKFold(
     shuffle=True,
     random_state=42
 )
-# Updated to use x_train_scaled to ensure consistency and speed
 scores=cross_val_score(
     model,
     x_train_scaled,
@@ -225,14 +218,11 @@ for name, (estimator, params) in model_params.items():
     })
 
 results_df = pd.DataFrame(results)
-# Fixed: Sorting by 'Best Score' (numeric) instead of 'Best Params' (dict)
 results_df = results_df.sort_values(
     "Best Score",
     ascending=False
 )
 print(results_df)
-
-#print(classification_report(y_test,y_pred))
 from sklearn.metrics import classification_report,confusion_matrix
 print(confusion_matrix(y_test,y_pred))
 
@@ -273,27 +263,95 @@ with open("scaler.pkl","wb") as file:
 import streamlit as st
 import pandas as pd
 import pickle
-
-# Corrected mode to 'rb' for reading
 with open("heart_model.pkl", "rb") as file:
     model = pickle.load(file)
 with open("scaler.pkl", "rb") as file:
     scaler = pickle.load(file)
 
+```python
 st.title("Heart Disease Prediction")
 st.write("Enter the patient's information below.")
 
-# Input fields
 age = st.number_input("Age", min_value=1, max_value=120, value=50)
-sex = st.selectbox("Sex", [0, 1])
-cp = st.selectbox("Chest Pain Type", [0, 1, 2, 3])
-trestbps = st.number_input("Resting Blood Pressure", min_value=50, max_value=250, value=120)
-thalach = st.number_input("Maximum Heart Rate", min_value=50, max_value=250, value=150)
-exang = st.selectbox("Exercise Induced Angina", [0, 1])
-oldpeak = st.number_input("Oldpeak", min_value=0.0, max_value=10.0, value=1.0)
-slope = st.selectbox("Slope", [0, 1, 2])
-ca = st.selectbox("Number of Major Vessels", [0, 1, 2, 3, 4])
-thal = st.selectbox("Thal", [0, 1, 2, 3])
+
+sex_option = st.selectbox("Sex", ["Female", "Male"])
+sex = 0 if sex_option == "Female" else 1
+
+cp_option = st.selectbox(
+    "Chest Pain Type",
+    [
+        "Typical Angina",
+        "Atypical Angina",
+        "Non-anginal Pain",
+        "Asymptomatic"
+    ]
+)
+
+cp_mapping = {
+    "Typical Angina": 0,
+    "Atypical Angina": 1,
+    "Non-anginal Pain": 2,
+    "Asymptomatic": 3
+}
+
+cp = cp_mapping[cp_option]
+
+trestbps = st.number_input(
+    "Resting Blood Pressure",
+    min_value=50,
+    max_value=250,
+    value=120
+)
+
+thalach = st.number_input(
+    "Maximum Heart Rate",
+    min_value=50,
+    max_value=250,
+    value=150
+)
+
+exang_option = st.selectbox(
+    "Exercise Induced Angina",
+    ["No", "Yes"]
+)
+
+exang = 0 if exang_option == "No" else 1
+
+oldpeak = st.number_input(
+    "Oldpeak",
+    min_value=0.0,
+    max_value=10.0,
+    value=1.0
+)
+
+slope_option = st.selectbox(
+    "Slope",
+    ["Upsloping", "Flat", "Downsloping"]
+)
+
+slope_mapping = {
+    "Upsloping": 0,
+    "Flat": 1,
+    "Downsloping": 2
+}
+slope = slope_mapping[slope_option]
+ca = st.selectbox(
+    "Number of Major Vessels",
+    [0, 1, 2, 3, 4]
+)
+thal_option = st.selectbox(
+    "Thalassemia",
+    ["Normal", "Fixed Defect", "Reversible Defect"]
+)
+
+thal_mapping = {
+    "Normal": 1,
+    "Fixed Defect": 2,
+    "Reversible Defect": 3
+}
+
+thal = thal_mapping[thal_option]
+```
 
 if st.button("Predict"):
     new_data = pd.DataFrame({
@@ -308,11 +366,10 @@ if st.button("Predict"):
         "ca": [ca],
         "thal": [thal]
     })
-    # Moved inside the button block to avoid NameError
     new_data_scaled = scaler.transform(new_data)
     prediction = model.predict(new_data_scaled)
     if prediction[0]==0:
-      st.write("Patient does not have a heart disease!")
+      st.write("You does not have a heart disease!")
     else:
-      st.write("Patient has a heart disease! You should go see a doctor!")
+      st.write("You have a heart disease! You should go see a doctor!")
 
