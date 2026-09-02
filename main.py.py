@@ -77,7 +77,7 @@ try:
 except FileNotFoundError:
 
     st.error(
-        "heart.csv was not found."
+        "heart.csv was not found. Please put heart.csv in the same folder as app.py."
     )
 
     st.stop()
@@ -110,29 +110,36 @@ age = st.number_input(
 )
 
 
-sex = st.selectbox(
+sex_options = {
+    "Female": 0,
+    "Male": 1
+}
+
+sex_text = st.selectbox(
     "Sex",
-    [0, 1],
-    format_func=lambda x:
-    "Female" if x == 0 else "Male"
+    list(sex_options.keys())
 )
 
+sex = sex_options[sex_text]
 
-cp = st.selectbox(
+
+cp_options = {
+    "Typical Angina": 0,
+    "Atypical Angina": 1,
+    "Non-anginal Pain": 2,
+    "Asymptomatic": 3
+}
+
+cp_text = st.selectbox(
     "Chest Pain Type",
-    [0, 1, 2, 3],
-    format_func=lambda x:
-    {
-        0: "Typical Angina",
-        1: "Atypical Angina",
-        2: "Non-anginal Pain",
-        3: "Asymptomatic"
-    }[x]
+    list(cp_options.keys())
 )
+
+cp = cp_options[cp_text]
 
 
 trestbps = st.number_input(
-    "Resting Blood Pressure",
+    "Resting Blood Pressure (mm Hg)",
     min_value=80,
     max_value=220,
     value=120,
@@ -141,7 +148,7 @@ trestbps = st.number_input(
 
 
 thalach = st.number_input(
-    "Maximum Heart Rate",
+    "Maximum Heart Rate Achieved",
     min_value=70,
     max_value=210,
     value=150,
@@ -149,12 +156,17 @@ thalach = st.number_input(
 )
 
 
-exang = st.selectbox(
+exang_options = {
+    "No": 0,
+    "Yes": 1
+}
+
+exang_text = st.selectbox(
     "Exercise Induced Angina",
-    [0, 1],
-    format_func=lambda x:
-    "No" if x == 0 else "Yes"
+    list(exang_options.keys())
 )
+
+exang = exang_options[exang_text]
 
 
 oldpeak = st.number_input(
@@ -166,10 +178,18 @@ oldpeak = st.number_input(
 )
 
 
-slope = st.selectbox(
-    "Slope",
-    [0, 1, 2]
+slope_options = {
+    "Upsloping": 0,
+    "Flat": 1,
+    "Downsloping": 2
+}
+
+slope_text = st.selectbox(
+    "Slope of Peak Exercise ST Segment",
+    list(slope_options.keys())
 )
+
+slope = slope_options[slope_text]
 
 
 ca = st.selectbox(
@@ -178,10 +198,19 @@ ca = st.selectbox(
 )
 
 
-thal = st.selectbox(
-    "Thal",
-    [0, 1, 2, 3]
+thal_options = {
+    "Unknown / No Result": 0,
+    "Normal": 1,
+    "Fixed Defect": 2,
+    "Reversible Defect": 3
+}
+
+thal_text = st.selectbox(
+    "Thalassemia Result",
+    list(thal_options.keys())
 )
+
+thal = thal_options[thal_text]
 
 
 input_data = pd.DataFrame(
