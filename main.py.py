@@ -350,7 +350,6 @@ thal_mapping = {
 }
 
 thal = thal_mapping[thal_option]
-```
 
 if st.button("Predict"):
     new_data = pd.DataFrame({
