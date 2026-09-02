@@ -36,11 +36,17 @@ def train_model():
 
     df = df.drop_duplicates()
 
+    df["age"] = pd.to_numeric(
+        df["age"],
+        errors="coerce"
+    )
+
     df = df.dropna(
         subset=FEATURE_COLUMNS + ["target"]
     )
 
     X = df[FEATURE_COLUMNS].copy()
+
     y = df["target"].astype(int)
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -51,49 +57,31 @@ def train_model():
         stratify=y
     )
 
-    pipeline = Pipeline([
+    model = Pipeline([
         ("scaler", StandardScaler()),
-        ("model", LogisticRegression(max_iter=5000))
+        ("logistic", LogisticRegression(max_iter=5000))
     ])
 
-    pipeline.fit(
+    model.fit(
         X_train,
         y_train
     )
 
     joblib.dump(
-        pipeline,
+        model,
         "heart_model.pkl"
     )
 
-    return pipeline
+    return model
 
 
-try:
-
-    model = train_model()
-
-except FileNotFoundError:
-
-    st.error(
-        "heart.csv was not found. Put heart.csv in the same folder as app.py."
-    )
-
-    st.stop()
-
-except Exception as e:
-
-    st.error(
-        f"Error loading dataset or training model: {e}"
-    )
-
-    st.stop()
+model = train_model()
 
 
-st.title("❤️ Heart Disease Predictor")
+st.title("❤️Heart Disease Predictor")
 
 st.write(
-    "Enter the patient's information below to predict the possibility of heart disease."
+    "Enter the patient's information to check the prediction."
 )
 
 
@@ -144,7 +132,7 @@ cp = cp_values[cp_option]
 
 
 trestbps = st.number_input(
-    "What is the resting blood pressure (mm Hg)?",
+    "What is the resting blood pressure?",
     min_value=50,
     max_value=250,
     value=120,
@@ -162,7 +150,7 @@ thalach = st.number_input(
 
 
 exang_option = st.selectbox(
-    "Does exercise cause chest pain (angina)?",
+    "Does exercise cause chest pain?",
     [
         "No",
         "Yes"
@@ -203,7 +191,7 @@ slope = slope_values[slope_option]
 
 
 ca = st.number_input(
-    "Number of major vessels colored by fluoroscopy?",
+    "Number of major vessels?",
     min_value=0,
     max_value=4,
     value=0,
@@ -246,87 +234,23 @@ input_data = pd.DataFrame(
 )
 
 
-st.subheader("Patient Data")
-
-st.dataframe(
-    input_data,
-    use_container_width=True
-)
-
-
 if st.button(
-    "🔍 Predict Heart Disease",
+    "Predict Heart Disease",
     use_container_width=True
 ):
 
-    try:
+    prediction = model.predict(
+        input_data
+    )[0]
 
-        prediction = model.predict(
-            input_data
-        )[0]
-
-        probabilities = model.predict_proba(
-            input_data
-        )[0]
-
-        probability_class_0 = probabilities[0]
-        probability_class_1 = probabilities[1]
-
-
-        st.subheader("Prediction Result")
-
-
-        if prediction == 1:
-
-            st.error(
-                "⚠️ Heart disease detected."
-            )
-
-        else:
-
-            st.success(
-                "✅ No heart disease detected."
-            )
-
-
-        st.write(
-            f"Prediction: `{prediction}`"
-        )
-
-        st.write(
-            f"Probability of class 0: "
-            f"{probability_class_0 * 100:.2f}%"
-        )
-
-        st.write(
-            f"Probability of class 1: "
-            f"{probability_class_1 * 100:.2f}%"
-        )
-
-
-        st.subheader("Prediction Probability")
-
-
-        st.write(
-            "Class 0"
-        )
-
-        st.progress(
-            float(probability_class_0)
-        )
-
-
-        st.write(
-            "Class 1"
-        )
-
-        st.progress(
-            float(probability_class_1)
-        )
-
-
-    except Exception as e:
+    if prediction == 1:
 
         st.error(
-            f"Prediction error: {e}"
+            "Heart disease detected."
+        )
+
+    else:
+
+        st.success(
+            "No heart disease detected."
         )
