@@ -12,7 +12,7 @@ st.set_page_config(
 
 @st.cache_resource
 def get_model():
-    return train_model(DATA_PATH, version=3)
+    return train_model(DATA_PATH, version=4)
 
 
 try:

@@ -10,6 +10,13 @@ from sklearn.preprocessing import StandardScaler
 
 DATA_PATH = Path(__file__).resolve().parent / "heart.csv"
 
+# The CSV preserves the source dataset's convention: 0 means disease and
+# 1 means no disease. The application uses the opposite binary convention.
+DATASET_TARGET_TO_APP_TARGET = {
+    0: 1,
+    1: 0,
+}
+
 FEATURE_COLUMNS = [
     "age",
     "sex",
@@ -69,21 +76,21 @@ def load_dataset(data_path: Path = DATA_PATH) -> pd.DataFrame:
         raise ValueError("heart.csv contains missing values in model columns")
 
     target_values = set(df["target"].astype(int).unique())
-    if target_values != {0, 1}:
+    if target_values != set(DATASET_TARGET_TO_APP_TARGET):
         raise ValueError(
-            "heart.csv target must contain both 0 (no disease) and "
-            f"1 (disease); found {sorted(target_values)}"
+            "heart.csv raw target must contain both 0 (disease) and "
+            f"1 (no disease); found {sorted(target_values)}"
         )
 
     return df
 
 
-def train_model(data_path: Path = DATA_PATH, version: int = 3) -> Pipeline:
+def train_model(data_path: Path = DATA_PATH, version: int = 4) -> Pipeline:
     """Train the serving model and reject a dataset/model that collapses to one class."""
     del version  # Explicit cache-busting argument for Streamlit callers.
     df = load_dataset(data_path)
     X = df[FEATURE_COLUMNS].copy()
-    y = df["target"].astype(int)
+    y = df["target"].astype(int).map(DATASET_TARGET_TO_APP_TARGET)
 
     X_train, X_test, y_train, _ = train_test_split(
         X,
