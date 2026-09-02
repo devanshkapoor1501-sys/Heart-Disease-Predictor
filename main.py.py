@@ -229,7 +229,7 @@ input_data = pd.DataFrame(
 
 
 if st.button(
-    "🔍 Predict Heart Disease",
+    "Predict Heart Disease",
     use_container_width=True
 ):
 
