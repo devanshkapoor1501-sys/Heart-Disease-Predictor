@@ -1,10 +1,6 @@
 import streamlit as st
-import pandas as pd
 
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
+from model_utils import DATA_PATH, UI_MAPPINGS, predict_patient, train_model
 
 
 st.set_page_config(
@@ -14,68 +10,19 @@ st.set_page_config(
 )
 
 
-FEATURE_COLUMNS = [
-    "age",
-    "sex",
-    "cp",
-    "trestbps",
-    "thalach",
-    "exang",
-    "oldpeak",
-    "slope",
-    "ca",
-    "thal"
-]
-
-
 @st.cache_resource
-def train_model(version=2):
-
-    df = pd.read_csv("heart.csv")
-
-    df = df.drop_duplicates()
-
-    X = df[FEATURE_COLUMNS].copy()
-
-    y = df["target"].astype(int)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.20,
-        random_state=42,
-        stratify=y
-    )
-
-    model = Pipeline([
-        (
-            "scaler",
-            StandardScaler()
-        ),
-        (
-            "logistic",
-            LogisticRegression(
-                max_iter=5000
-            )
-        )
-    ])
-
-    model.fit(
-        X_train,
-        y_train
-    )
-
-    return model
+def get_model():
+    return train_model(DATA_PATH, version=3)
 
 
 try:
 
-    model = train_model()
+    model = get_model()
 
 except FileNotFoundError:
 
     st.error(
-        "heart.csv was not found. Make sure it is in the same folder as app.py."
+        f"heart.csv was not found at {DATA_PATH}."
     )
 
     st.stop()
@@ -108,10 +55,7 @@ age = st.number_input(
 )
 
 
-sex_options = {
-    "Female": 0,
-    "Male": 1
-}
+sex_options = UI_MAPPINGS["sex"]
 
 sex_text = st.selectbox(
     "Sex",
@@ -121,12 +65,7 @@ sex_text = st.selectbox(
 sex = sex_options[sex_text]
 
 
-cp_options = {
-    "Typical Angina": 0,
-    "Atypical Angina": 1,
-    "Non-anginal Pain": 2,
-    "Asymptomatic": 3
-}
+cp_options = UI_MAPPINGS["cp"]
 
 cp_text = st.selectbox(
     "Chest Pain Type",
@@ -154,10 +93,7 @@ thalach = st.number_input(
 )
 
 
-exang_options = {
-    "No": 0,
-    "Yes": 1
-}
+exang_options = UI_MAPPINGS["exang"]
 
 exang_text = st.selectbox(
     "Exercise Induced Angina",
@@ -176,11 +112,7 @@ oldpeak = st.number_input(
 )
 
 
-slope_options = {
-    "Upsloping": 0,
-    "Flat": 1,
-    "Downsloping": 2
-}
+slope_options = UI_MAPPINGS["slope"]
 
 slope_text = st.selectbox(
     "Slope of Peak Exercise ST Segment",
@@ -196,12 +128,7 @@ ca = st.selectbox(
 )
 
 
-thal_options = {
-    "Unknown / No Result": 0,
-    "Normal": 1,
-    "Fixed Defect": 2,
-    "Reversible Defect": 3
-}
+thal_options = UI_MAPPINGS["thal"]
 
 thal_text = st.selectbox(
     "Thalassemia Result",
@@ -211,21 +138,18 @@ thal_text = st.selectbox(
 thal = thal_options[thal_text]
 
 
-input_data = pd.DataFrame(
-    [[
-        age,
-        sex,
-        cp,
-        trestbps,
-        thalach,
-        exang,
-        oldpeak,
-        slope,
-        ca,
-        thal
-    ]],
-    columns=FEATURE_COLUMNS
-)
+input_values = {
+    "age": age,
+    "sex": sex,
+    "cp": cp,
+    "trestbps": trestbps,
+    "thalach": thalach,
+    "exang": exang,
+    "oldpeak": oldpeak,
+    "slope": slope,
+    "ca": ca,
+    "thal": thal,
+}
 
 
 if st.button(
@@ -235,9 +159,7 @@ if st.button(
 
     try:
 
-        prediction = model.predict(
-            input_data
-        )[0]
+        prediction = predict_patient(model, input_values)
 
         if prediction == 1:
 
