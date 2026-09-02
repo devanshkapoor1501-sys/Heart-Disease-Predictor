@@ -2,11 +2,10 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 
 st.set_page_config(
@@ -62,67 +61,17 @@ def train_model():
         y_train
     )
 
-    y_pred = pipeline.predict(
-        X_test
-    )
-
-    accuracy = accuracy_score(
-        y_test,
-        y_pred
-    )
-
-    cv = StratifiedKFold(
-        n_splits=5,
-        shuffle=True,
-        random_state=42
-    )
-
-    cv_scores = cross_val_score(
-        pipeline,
-        X,
-        y,
-        cv=cv,
-        scoring="accuracy"
-    )
-
     joblib.dump(
         pipeline,
         "heart_model.pkl"
     )
 
-    return (
-        pipeline,
-        accuracy,
-        cv_scores.mean(),
-        y_test,
-        y_pred
-    )
+    return pipeline
 
 
 try:
 
-    if "model" not in st.session_state:
-
-        with st.spinner("Training heart disease model..."):
-
-            (
-                model,
-                accuracy,
-                cv_accuracy,
-                y_test,
-                y_pred
-            ) = train_model()
-
-            st.session_state.model = model
-            st.session_state.accuracy = accuracy
-            st.session_state.cv_accuracy = cv_accuracy
-
-    else:
-
-        model = st.session_state.model
-        accuracy = st.session_state.accuracy
-        cv_accuracy = st.session_state.cv_accuracy
-
+    model = train_model()
 
 except FileNotFoundError:
 
@@ -131,7 +80,6 @@ except FileNotFoundError:
     )
 
     st.stop()
-
 
 except Exception as e:
 
@@ -146,17 +94,6 @@ st.title("❤️ Heart Disease Predictor")
 
 st.write(
     "Enter the patient's information below to predict the possibility of heart disease."
-)
-
-
-st.sidebar.header("Model Performance")
-
-st.sidebar.write(
-    f"Test Accuracy: {accuracy * 100:.2f}%"
-)
-
-st.sidebar.write(
-    f"Cross-Validation Accuracy: {cv_accuracy * 100:.2f}%"
 )
 
 
@@ -367,7 +304,8 @@ if st.button(
         )
 
 
-        st.subheader("Probability")
+        st.subheader("Prediction Probability")
+
 
         st.write(
             "Class 0"
@@ -376,6 +314,7 @@ if st.button(
         st.progress(
             float(probability_class_0)
         )
+
 
         st.write(
             "Class 1"
