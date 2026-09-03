@@ -10,8 +10,6 @@ from sklearn.preprocessing import StandardScaler
 
 DATA_PATH = Path(__file__).resolve().parent / "heart.csv"
 
-# The CSV preserves the source dataset's convention: 0 means disease and
-# 1 means no disease. The application uses the opposite binary convention.
 DATASET_TARGET_TO_APP_TARGET = {
     0: 1,
     1: 0,
@@ -61,7 +59,6 @@ UI_MAPPINGS = {
 
 
 def load_dataset(data_path: Path = DATA_PATH) -> pd.DataFrame:
-    """Load and validate the dataset used by both training and inference."""
     df = pd.read_csv(data_path).drop_duplicates().copy()
     required_columns = FEATURE_COLUMNS + ["target"]
     missing_columns = [column for column in required_columns if column not in df]
@@ -86,8 +83,7 @@ def load_dataset(data_path: Path = DATA_PATH) -> pd.DataFrame:
 
 
 def train_model(data_path: Path = DATA_PATH, version: int = 4) -> Pipeline:
-    """Train the serving model and reject a dataset/model that collapses to one class."""
-    del version  # Explicit cache-busting argument for Streamlit callers.
+    del version  
     df = load_dataset(data_path)
     X = df[FEATURE_COLUMNS].copy()
     y = df["target"].astype(int).map(DATASET_TARGET_TO_APP_TARGET)
@@ -119,7 +115,6 @@ def train_model(data_path: Path = DATA_PATH, version: int = 4) -> Pipeline:
 
 
 def build_input_data(values: Mapping[str, object]) -> pd.DataFrame:
-    """Build one prediction row in exactly the order used during training."""
     missing_values = [column for column in FEATURE_COLUMNS if column not in values]
     if missing_values:
         raise ValueError(
@@ -133,7 +128,6 @@ def build_input_data(values: Mapping[str, object]) -> pd.DataFrame:
 
 
 def predict_patient(model: Pipeline, values: Mapping[str, object]) -> int:
-    """Return a validated binary prediction for one patient."""
     prediction_values = model.predict(build_input_data(values))
     if len(prediction_values) != 1:
         raise ValueError("Expected exactly one prediction")
